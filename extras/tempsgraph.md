@@ -9,9 +9,9 @@ license: MIT
 
 date: 2017-03-29
 
-homepage: https://github.com/1r0b1n0/OctoPrint-Tempsgraph
-source: https://github.com/1r0b1n0/OctoPrint-Tempsgraph
-archive: https://github.com/1r0b1n0/OctoPrint-Tempsgraph/archive/master.zip
+homepage: https://github.com/ketchu13/OctoPrint-Tempsgraph
+source: https://github.com/ketchu13/OctoPrint-Tempsgraph
+archive: https://github.com/ketchu13/OctoPrint-Tempsgraph/archive/master.zip
 
 follow_dependency_links: false
 
