@@ -1,13 +1,18 @@
 # coding=utf-8
 from __future__ import absolute_import
+from flask.ext.babel import gettext
+import re
 
 import octoprint.plugin
+
 
 class TempsgraphPlugin(octoprint.plugin.SettingsPlugin,
                        octoprint.plugin.AssetPlugin,
                        octoprint.plugin.TemplatePlugin):
+    def __init__(self):
+        self.speed = "N/A"
 
-    ##~~ SettingsPlugin mixin
+        ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
         return dict(
@@ -32,23 +37,52 @@ class TempsgraphPlugin(octoprint.plugin.SettingsPlugin,
                     name="Custom",
                     value="#fffff")],
             color=dict(
-                backgroundColor = 'Default',
+                backgroundColor='Default',
                 axisesColor="Default"
             ),
-            showBackgroundImage=True,
-            startWithAutoScale=False
+            showBackgroundImage=True
+
         )
 
     ##~~ AssetPlugin mixin
-
     def get_assets(self):
         # Define your plugin's asset files to automatically include in the
         # core UI here.
         return dict(
-                        js=["js/tempsgraph.js", "js/plotly-latest.min.js"],
-                        css=["css/tempsgraph.css"]
-#			less=["less/tempsgraph.less"]
+            js=["js/tempsgraph.js", "js/plotly-latest.min.js"],
+            css=["css/tempsgraph.css"]
+            #			less=["less/tempsgraph.less"]
         )
+
+    def process_gcode_received(self, comm, line, *args, **kwargs):
+        if "Fanspeed" not in line:
+            return line
+
+        fan_response = re.search("(\d*\.?\d+?)", line)
+        if fan_response and fan_response.group(1):
+            fan_response = fan_response.group(1)
+            if float(fan_response) == 0:
+                self.speed = gettext('Off')
+            else:
+                self.speed = str(int(float(fan_response) * 100.0 / 255.0)) + "%"
+            self._plugin_manager.send_plugin_message(self._identifier, dict(speed=self.speed))
+        return line
+
+    def process_gcode(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
+        if gcode and gcode.startswith('M106'):
+            s = re.search("S(.+)", cmd)
+            if s and s.group(1):
+                s = s.group(1)
+                if float(s) == 0:
+                    self.speed = gettext('Off')
+                else:
+                    self.speed = str(int(float(s) * 100.0 / 255.0)) + "%"
+                self._plugin_manager.send_plugin_message(self._identifier, dict(speed=self.speed))
+        if gcode and gcode.startswith('M107'):
+            self.speed = gettext('Off')
+            self._plugin_manager.send_plugin_message(self._identifier, dict(speed=self.speed))
+
+        return None
 
     ##~~ Softwareupdate hook
 
@@ -63,7 +97,7 @@ class TempsgraphPlugin(octoprint.plugin.SettingsPlugin,
 
                 # version check: github repository
                 type="github_release",
-                user="1r0b1n0",
+                user="k13",
                 repo="OctoPrint-Tempsgraph",
                 current=self._plugin_version,
 
@@ -71,10 +105,12 @@ class TempsgraphPlugin(octoprint.plugin.SettingsPlugin,
                 pip="https://github.com/1r0b1n0/OctoPrint-Tempsgraph/archive/{target_version}.zip"
             )
         )
+
     def get_template_configs(self):
         return [
             dict(type="settings", custom_bindings=True)
         ]
+
 
 __plugin_name__ = "Tempsgraph Plugin"
 
@@ -86,5 +122,7 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
+        "octoprint.comm.protocol.gcode.sent": __plugin_implementation__.process_gcode,
+        "octoprint.comm.protocol.gcode.received": __plugin_implementation__.process_gcode_received,
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
     }

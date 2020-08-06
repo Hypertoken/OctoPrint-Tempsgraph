@@ -9,9 +9,15 @@ $(function() {
     function TempsgraphViewModel(parameters) {
         var self = this;
 
+        self.onDataUpdaterPluginMessage = function(plugin, data) {
+            if (plugin != "fanspeed") {
+                return;
+            }
+            self.speed(gettext(data.speed))
+};
         self.loginState = parameters[0];
         self.settingsViewModel = parameters[1];
-
+        console.log(parameters)
         self._createToolEntry = function() {
             return {
                 name: ko.observable(),
@@ -28,10 +34,15 @@ $(function() {
         self.bedTemp["name"](gettext("Bed"));
         self.bedTemp["key"]("bed");
 
-        self.hasChamber = ko.observable(false);
-        self.chamberTemp = self._createToolEntry();
-        self.chamberTemp["name"](gettext("Chamber"));
-        self.chamberTemp["key"]("chamber");
+        self.has_fan_parts = ko.observable(true);
+        self.fan_parts_speed = self._createToolEntry();
+        self.fan_parts_speed["name"](gettext("Bed"));
+        self.fan_parts_speed["key"]("fan_parts");
+
+        /*self.has_fan_parts = ko.observable(true);
+        self.fan_parts_speed = self._createToolEntry();
+        self.fan_parts_speed["name"](gettext("Bed"));
+        self.fan_parts_speed["key"]("fan_parts");*/
 
         self.isErrorOrClosed = ko.observable(undefined);
         self.isOperational = ko.observable(undefined);
@@ -75,14 +86,12 @@ $(function() {
         self.subscriptions = [];
 
         self._printerProfileUpdated = function() {
-            var graphColors = ["red", "orange", "green", "brown", "purple", "fuchsia"];
+            var graphColors = ["red", "orange", "green", "brown", "purple", "pink", "yellow"];
             var heaterOptions = {};
             var tools = self.tools();
             var color;
 
-            self.showFahrenheit = (self.settingsViewModel.settings !== undefined )
-                     ? self.settingsViewModel.settings.appearance.showFahrenheitAlso()
-                     : false;
+            self.showFahrenheit = false;
 
             // tools
             var currentProfileData = self.settingsViewModel.printerProfiles.currentProfileData();
@@ -93,7 +102,7 @@ $(function() {
                 for (var extruder = 0; extruder < numExtruders; extruder++) {
                     color = graphColors.shift();
                     if (!color) color = "black";
-                    heaterOptions["tool" + extruder] = {name: "T" + extruder, color: color};
+                    heaterOptions["Hotend" + extruder] = {name: "T" + extruder, color: color};
 
                     if (tools.length <= extruder || !tools[extruder]) {
                         tools[extruder] = self._createToolEntry();
@@ -121,13 +130,8 @@ $(function() {
                 self.hasBed(false);
             }
 
-            if (currentProfileData && currentProfileData.heatedChamber()) {
-                self.hasChamber(true);
-                heaterOptions["chamber"] = {name: gettext("Chamber"), color: "black"};
-            } else {
-                self.hasChamber(false);
-            }
-
+            self.has_fan_parts = true;
+            heaterOptions["fan_parts"] = {name: gettext("Fan"), color: "green"};
             // write back
             self.heaterOptions(heaterOptions);
             self.tools(tools);
